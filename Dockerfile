@@ -5,6 +5,7 @@ ENV RAILS_ENV=production \
     BUNDLE_WITHOUT="development test" \
     BUNDLE_DEPLOYMENT=true
 
+# ---- System Packages ----
 RUN apt-get update -qq && apt-get install -y \
   build-essential \
   libpq-dev \
@@ -16,30 +17,29 @@ RUN apt-get update -qq && apt-get install -y \
   npm && \
   apt-get clean
 
-# Instalar PNPM
+# ---- Install PNPM ----
 RUN npm install -g pnpm
 
 WORKDIR /app
 COPY . /app
 
-# Bundler
+# ---- Ruby/Bundler ----
 RUN gem install bundler -v 2.5.16
 RUN bundle config set without 'development test'
 RUN bundle install --jobs 4 --retry 3
 
-# PNPM installs
+# ---- JS dependencies ----
 RUN pnpm install
-RUN pnpm build
 
-# Pré-compilar assets Rails
+# ---- Rails assets ----
 RUN bundle exec rake assets:precompile
 
+# ------------- Final Image ----------------
 FROM ruby:3.4.4
 
 ENV RAILS_ENV=production
 
 WORKDIR /app
-
 COPY --from=builder /app /app
 
 EXPOSE 3000
