@@ -5,47 +5,58 @@ ENV RAILS_ENV=production \
     BUNDLE_WITHOUT="development test" \
     BUNDLE_DEPLOYMENT=true
 
-# Install required system packages
-RUN apt-get update && \
-    apt-get install -y build-essential nodejs npm curl gnupg libpq-dev git && \
-    npm install --global yarn && \
-    apt-get clean
+# -----------------------------
+# Install system packages
+# -----------------------------
+RUN apt-get update -qq && apt-get install -y \
+  build-essential \
+  libpq-dev \
+  nodejs \
+  npm \
+  curl \
+  gnupg2 \
+  git \
+  imagemagick \
+  libvips && \
+  apt-get clean
 
 WORKDIR /app
 
-# Copy application code
+# -----------------------------
+# Copy application
+# -----------------------------
 COPY . /app
 
-# Install Ruby dependencies
-RUN bundle install --jobs 4
+# -----------------------------
+# Ruby packages
+# -----------------------------
+RUN gem install bundler -v 2.5.9
+RUN bundle config set without 'development test'
+RUN bundle install --jobs 4 --retry 3
 
-# Install JS packages
-RUN yarn install --frozen-lockfile
+# -----------------------------
+# JS packages
+# -----------------------------
+RUN npm install --global yarn
+RUN yarn install --network-timeout 600000
+RUN yarn build
 
+# -----------------------------
 # Precompile assets
-RUN bundle exec rails assets:precompile
+# -----------------------------
+RUN bundle exec rake assets:precompile
 
-# ----------------------------
-# Runtime Image
-# ----------------------------
-FROM ruby:3.2.2-slim
+# -----------------------------
+# Final stage
+# -----------------------------
+FROM ruby:3.2.2
 
-ENV RAILS_ENV=production \
-    NODE_ENV=production \
-    MALLOC_ARENA_MAX=2
-
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y libpq5 curl && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV RAILS_ENV=production
 
 WORKDIR /app
 
-# Copy built app
 COPY --from=builder /app /app
 
-# Expose default Chatwoot port
 EXPOSE 3000
 
-# Entrypoint
-CMD ["bundle", "exec", "rails", "s", "-b", "0.0.0.0"]
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
