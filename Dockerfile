@@ -1,4 +1,4 @@
-FROM ruby:3.2.2 AS builder
+FROM ruby:3.4.4 AS builder
 
 ENV RAILS_ENV=production \
     NODE_OPTIONS=--max_old_space_size=4096 \
@@ -49,7 +49,7 @@ RUN bundle exec rake assets:precompile
 # -----------------------------
 # Final stage
 # -----------------------------
-FROM ruby:3.2.2
+FROM ruby:3.4.4
 
 ENV RAILS_ENV=production
 
